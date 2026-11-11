@@ -5,7 +5,7 @@ const CONFIG = {
   negocio: {
     nombre: "La Brasa Urbana - Burgers & Grill",
     eslogan: "Smash burgers artesanales al carbón, boneless crujientes y sabor callejero premium",
-    telefonoWhatsApp: "5215512345678",
+    telefonoWhatsApp: "5219930000000",
     costoEnvio: 35,
     envioGratisDesde: 350,
     tiempoEntrega: "30 min",
@@ -93,7 +93,7 @@ const CONFIG = {
       categoria: "Papas & Extras",
       descripcion: "Cama generosa de papas corte rústico con piel y sazonador Cajun, bañadas en salsa de queso cheddar caliente, pulled pork ahumado por 8 horas, trocitos de tocino, crema ácida y cebollín fresco.",
       precio: 125,
-      imagen: "https://images.unsplash.com/photo-1576107232684-1279f3908594?auto=format&fit=crop&w=700&q=80",
+      imagen: "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=700&q=80",
       etiqueta: "Para Compartir",
       popular: true
     },
@@ -493,6 +493,13 @@ document.addEventListener("alpine:init", () => {
 
       const urlWhatsApp = `https://wa.me/${this.config.telefonoWhatsApp}?text=${encodeURIComponent(mensaje)}`;
       window.open(urlWhatsApp, "_blank", "noopener,noreferrer");
+    },
+
+    // Acción del cintillo flotante "Demo Interactiva — Solicita este menú para tu negocio"
+    solicitarMenuNegocio() {
+      const texto = "👋 ¡Hola! Vi la *Demo Interactiva del Menú Digital con Pedidos a WhatsApp* y me interesa solicitar uno para mi negocio. ¿Me podrías dar más información?";
+      const url = `https://wa.me/${this.config.telefonoWhatsApp}?text=${encodeURIComponent(texto)}`;
+      window.open(url, "_blank", "noopener,noreferrer");
     }
   }));
 });

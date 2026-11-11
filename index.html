@@ -3,8 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-  <title>La Brasa Urbana - Burgers & Grill | Menú Digital</title>
-  <meta name="description" content="Pide en línea tus Smash Burgers artesanales al carbón, boneless crujientes y papas cargadas directo a tu WhatsApp." />
+  <title>La Brasa Urbana - Burgers & Grill | Menú Digital Interactivo</title>
+  <meta name="description" content="Pide en línea tus Smash Burgers artesanales al carbón, boneless crujientes y papas cargadas directo a tu WhatsApp en segundos." />
+
+  <!-- Open Graph / Vista Previa para WhatsApp y Facebook Messenger -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="🍔 La Brasa Urbana | Menú Digital Interactivo con Pedidos a WhatsApp" />
+  <meta property="og:description" content="Explora nuestro menú interactivo, arma tu pedido en segundos y envíalo directo por WhatsApp. ¡Pruébalo en vivo!" />
+  <meta property="og:image" content="https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=800&q=80" />
 
   <!-- Google Fonts: Plus Jakarta Sans -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -67,6 +73,30 @@
   class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-amber-500 selection:text-white min-h-screen pb-32"
 >
   <!-- ==================================================================== -->
+  <!-- CINTILLO FLOTANTE DE DEMO INTERACTIVA (Para prospectos de Facebook)  -->
+  <!-- ==================================================================== -->
+  <div class="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border-b border-amber-500/30 text-white px-3 py-2 relative z-40">
+    <div class="max-w-2xl mx-auto flex items-center justify-between gap-2 text-[11px] sm:text-xs">
+      <div class="flex items-center gap-2 min-w-0">
+        <span class="inline-flex items-center gap-1 bg-amber-500/20 border border-amber-400/40 text-amber-300 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider text-[10px] shrink-0">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Live
+        </span>
+        <span class="font-semibold text-slate-200 truncate">
+          Demo Interactiva — Solicita este menú para tu negocio
+        </span>
+      </div>
+      <button
+        type="button"
+        @click="solicitarMenuNegocio()"
+        class="shrink-0 inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold px-2.5 py-1 rounded-full text-[11px] transition-all active:scale-95 shadow-sm"
+      >
+        <i class="fa-brands fa-whatsapp text-xs"></i>
+        <span>Lo quiero</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
   <!-- HEADER OSCURO PREMIUM (Mobile-First)                                 -->
   <!-- ==================================================================== -->
   <header class="relative bg-slate-900 text-white overflow-hidden">
@@ -75,6 +105,7 @@
       <img
         :src="config.bannerUrl"
         :alt="config.nombre"
+        onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80'"
         class="w-full h-full object-cover object-center scale-110 blur-sm opacity-35"
       />
       <div class="absolute inset-0 bg-gradient-to-b from-slate-900/75 via-slate-900/85 to-slate-900"></div>
@@ -123,6 +154,7 @@
             <img
               :src="config.logoUrl"
               :alt="config.nombre"
+              onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80'"
               class="w-full h-full object-cover rounded-full border-2 border-slate-900"
             />
           </div>
@@ -299,6 +331,7 @@
               :src="producto.imagen"
               :alt="producto.nombre"
               loading="lazy"
+              onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80'"
               class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
             <!-- Gradiente sutil en la base de la foto -->
@@ -557,6 +590,7 @@
                   <img
                     :src="item.imagen"
                     :alt="item.nombre"
+                    onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80'"
                     class="w-12 h-12 rounded-xl object-cover shrink-0 bg-slate-200"
                   />
                   <div class="min-w-0">
@@ -966,6 +1000,7 @@
         <img
           :src="config.logoUrl"
           :alt="config.nombre"
+          onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80'"
           class="w-16 h-16 rounded-full object-cover mx-auto border-2 border-amber-400 shadow-md mb-2"
         />
         <h2 id="titulo-modal-qr" class="text-base sm:text-lg font-extrabold" x-text="config.nombre"></h2>
@@ -982,6 +1017,7 @@
               alt="Código QR del Menú Digital"
               width="200"
               height="200"
+              onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=500&q=80'"
               class="w-44 h-44 mx-auto object-contain"
             />
           </div>
