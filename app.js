@@ -12,8 +12,20 @@ const CONFIG = {
     estadoAbierto: true,
     textoEstado: "Abierto ahora • Envío 30 min",
     horarios: "Mar - Dom: 1:00 PM a 11:30 PM",
+    horariosDetalle: [
+      { dias: "Martes a Jueves", horas: "1:00 PM – 10:30 PM" },
+      { dias: "Viernes y Sábado", horas: "1:00 PM – 11:30 PM" },
+      { dias: "Domingo", horas: "1:00 PM – 10:00 PM" },
+      { dias: "Lunes", horas: "Cerrado por descanso" }
+    ],
     direccion: "Av. Insurgentes Sur 1450, Col. Del Valle, CDMX",
+    googleMapsUrl: "https://maps.google.com/?q=Av.+Insurgentes+Sur+1450,+Del+Valle,+CDMX",
     moneda: "MXN",
+    datosBancarios: {
+      banco: "BBVA México",
+      titular: "La Brasa Urbana S.A. de C.V.",
+      clabe: "012180001234567895"
+    },
     logoUrl: "https://images.unsplash.com/photo-1586190848861-99aa4a171e90?auto=format&fit=crop&w=300&q=80",
     bannerUrl: "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=1200&q=80"
   },
@@ -128,16 +140,52 @@ document.addEventListener("alpine:init", () => {
     animarCarrito: false,
     ultimoProductoModificado: null,
 
+    // Estado de Modales (Iteración 2)
+    modalPedidoAbierto: false,
+    modalQrAbierto: false,
+
+    // Estado del Checkout / Formulario de Pedido
+    tipoEntrega: "domicilio", // 'domicilio' | 'recoger'
+    cliente: {
+      nombre: "",
+      direccion: "",
+      referencias: "",
+      notas: "",
+      metodoPago: "efectivo", // 'efectivo' | 'transferencia'
+      pagaCon: ""
+    },
+    errores: {
+      nombre: false,
+      direccion: false
+    },
+    mensajeError: "",
+    clabeCopiada: false,
+    descargandoQr: false,
+    urlActual: window.location.href,
+
     init() {
-      // Recuperar carrito previo de localStorage si existe
+      // Recuperar carrito y datos básicos del cliente de localStorage si existen
       try {
         const guardado = localStorage.getItem("brasa_urbana_carrito_v1");
         if (guardado) {
           this.carrito = JSON.parse(guardado);
         }
+        const clienteGuardado = localStorage.getItem("brasa_urbana_cliente_v1");
+        if (clienteGuardado) {
+          const parsed = JSON.parse(clienteGuardado);
+          this.cliente = { ...this.cliente, ...parsed };
+        }
       } catch (e) {
         console.warn("No se pudo leer localStorage:", e);
       }
+
+      // Bloquear scroll del body cuando un modal esté abierto
+      this.$watch("modalPedidoAbierto", (abierto) => {
+        document.body.classList.toggle("overflow-hidden", abierto || this.modalQrAbierto);
+      });
+      this.$watch("modalQrAbierto", (abierto) => {
+        document.body.classList.toggle("overflow-hidden", abierto || this.modalPedidoAbierto);
+      });
     },
 
     // Filtrado reactivo por categoría y término de búsqueda
@@ -159,8 +207,23 @@ document.addEventListener("alpine:init", () => {
       });
     },
 
+    // Lista detallada de productos actualmente en el carrito
+    get itemsCarrito() {
+      return Object.entries(this.carrito)
+        .map(([id, cantidad]) => {
+          const producto = this.productos.find((p) => p.id === id);
+          if (!producto || cantidad <= 0) return null;
+          return {
+            ...producto,
+            cantidad,
+            subtotal: producto.precio * cantidad
+          };
+        })
+        .filter(Boolean);
+    },
+
     // Obtener cantidad actual de un producto en el carrito
-     obtenerCantidad(productoId) {
+    obtenerCantidad(productoId) {
       return this.carrito[productoId] || 0;
     },
 
@@ -189,6 +252,18 @@ document.addEventListener("alpine:init", () => {
       this.carrito = nuevoCarrito;
       this.dispararFeedback(productoId);
       this.guardarCarrito();
+
+      // Si el carrito queda vacío mientras el modal de pedido está abierto, cerrarlo suavemente
+      if (this.totalArticulos === 0 && this.modalPedidoAbierto) {
+        this.modalPedidoAbierto = false;
+      }
+    },
+
+    // Vaciar todo el carrito
+    vaciarCarrito() {
+      this.carrito = {};
+      this.guardarCarrito();
+      this.modalPedidoAbierto = false;
     },
 
     // Animación suave en el control del producto y en la barra flotante
@@ -213,6 +288,21 @@ document.addEventListener("alpine:init", () => {
       }
     },
 
+    guardarDatosCliente() {
+      try {
+        localStorage.setItem(
+          "brasa_urbana_cliente_v1",
+          JSON.stringify({
+            nombre: this.cliente.nombre,
+            direccion: this.cliente.direccion,
+            referencias: this.cliente.referencias
+          })
+        );
+      } catch (e) {
+        // Ignorar errores de almacenamiento
+      }
+    },
+
     // Total de piezas en el carrito
     get totalArticulos() {
       return Object.values(this.carrito).reduce((acc, cant) => acc + cant, 0);
@@ -224,6 +314,17 @@ document.addEventListener("alpine:init", () => {
         const prod = this.productos.find((p) => p.id === id);
         return total + (prod ? prod.precio * cant : 0);
       }, 0);
+    },
+
+    // Costo de envío según pestaña activa
+    get costoEnvioActual() {
+      if (this.totalArticulos === 0) return 0;
+      return this.tipoEntrega === "domicilio" ? this.config.costoEnvio : 0;
+    },
+
+    // Total final a pagar (Subtotal + Envío si aplica)
+    get totalPagar() {
+      return this.subtotalCarrito + this.costoEnvioActual;
     },
 
     // Formateador de moneda en MXN
@@ -242,15 +343,156 @@ document.addEventListener("alpine:init", () => {
       return this.productos.filter((p) => p.categoria === categoria).length;
     },
 
-    // Acción del botón "Ver mi pedido" (preparado para conectar con modal de checkout en Iteración 2)
+    // Abrir modal de Finalizar Pedido
     abrirPedido() {
-      // Dispara un evento personalizado o scroll suave; en la Iteración 1 brinda feedback inmediato
-      window.dispatchEvent(new CustomEvent("abrir-pedido", {
-        detail: {
-          articulos: this.totalArticulos,
-          subtotal: this.subtotalCarrito
-        }
-      }));
+      if (this.totalArticulos === 0) return;
+      this.errores = { nombre: false, direccion: false };
+      this.mensajeError = "";
+      this.modalPedidoAbierto = true;
+    },
+
+    // Copiar CLABE bancaria al portapapeles en un clic
+    async copiarClabe() {
+      const clabe = this.config.datosBancarios.clabe;
+      try {
+        await navigator.clipboard.writeText(clabe);
+      } catch (err) {
+        const input = document.createElement("input");
+        input.value = clabe;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        document.body.removeChild(input);
+      }
+      this.clabeCopiada = true;
+      setTimeout(() => {
+        this.clabeCopiada = false;
+      }, 2500);
+    },
+
+    // URL dinámica para el Código QR apuntando a window.location.href
+    get urlCodigoQr() {
+      const targetUrl = window.location.href || "http://localhost:9099";
+      return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`;
+    },
+
+    // Descargar el Código QR como archivo PNG listo para imprimir en mesas
+    async descargarQr() {
+      this.descargandoQr = true;
+      try {
+        const response = await fetch(this.urlCodigoQr);
+        const blob = await response.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        const slug = this.config.nombre
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/(^-|-$)/g, "");
+        link.download = `qr-menu-${slug || "restaurante"}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(blobUrl);
+      } catch (e) {
+        // Fallback en caso de restricción de red/CORS: abrir imagen en pestaña nueva
+        window.open(this.urlCodigoQr, "_blank", "noopener,noreferrer");
+      } finally {
+        this.descargandoQr = false;
+      }
+    },
+
+    // Validar formulario y enviar pedido formateado a WhatsApp
+    enviarPedidoWhatsApp() {
+      this.errores = { nombre: false, direccion: false };
+      this.mensajeError = "";
+
+      const nombreLimpio = this.cliente.nombre.trim();
+      const direccionLimpia = this.cliente.direccion.trim();
+
+      if (!nombreLimpio) {
+        this.errores.nombre = true;
+      }
+      if (this.tipoEntrega === "domicilio" && !direccionLimpia) {
+        this.errores.direccion = true;
+      }
+
+      if (this.errores.nombre || this.errores.direccion) {
+        this.mensajeError =
+          this.errores.nombre && this.errores.direccion
+            ? "Por favor ingresa tu nombre y tu dirección completa para el envío."
+            : this.errores.nombre
+            ? "Por favor escribe tu nombre para identificar tu pedido."
+            : "Por favor ingresa tu dirección completa para el envío a domicilio.";
+        return;
+      }
+
+      this.guardarDatosCliente();
+
+      // Construcción del ticket de WhatsApp con formato claro y profesional
+      const lineasProductos = this.itemsCarrito
+        .map(
+          (item) =>
+            `▪️ *${item.cantidad}x* ${item.nombre} — *${this.formatearPrecio(item.subtotal)} MXN*`
+        )
+        .join("\n");
+
+      const lineasEntrega =
+        this.tipoEntrega === "domicilio"
+          ? [
+              `🛵 *Tipo de entrega:* Envío a domicilio`,
+              `📍 *Dirección:* ${direccionLimpia}`,
+              this.cliente.referencias.trim()
+                ? `🏠 *Referencias:* ${this.cliente.referencias.trim()}`
+                : null
+            ]
+              .filter(Boolean)
+              .join("\n")
+          : `🛍️ *Tipo de entrega:* Pasar a recoger en sucursal (${this.config.direccion})`;
+
+      const detallePago =
+        this.cliente.metodoPago === "efectivo"
+          ? `💵 *Método de pago:* Efectivo${
+              this.cliente.pagaCon && String(this.cliente.pagaCon).trim()
+                ? ` (Paga con: $${String(this.cliente.pagaCon).trim()} MXN)`
+                : ""
+            }`
+          : `🏦 *Método de pago:* Transferencia SPEI (${this.config.datosBancarios.banco} - CLABE ${this.config.datosBancarios.clabe})`;
+
+      const notasCocina = this.cliente.notas.trim()
+        ? `\n📝 *Notas para cocina:* ${this.cliente.notas.trim()}\n`
+        : "";
+
+      const desgloseTotales = [
+        `🧾 *Subtotal:* ${this.formatearPrecio(this.subtotalCarrito)} MXN`,
+        this.tipoEntrega === "domicilio"
+          ? `🛵 *Envío a domicilio:* ${this.formatearPrecio(this.costoEnvioActual)} MXN`
+          : `🛍️ *Costo de envío:* Gratis ($0 MXN)`,
+        `🔥 *TOTAL A PAGAR: ${this.formatearPrecio(this.totalPagar)} MXN*`
+      ].join("\n");
+
+      const mensaje = [
+        `🍔 *¡HOLA! NUEVO PEDIDO - ${this.config.nombre.toUpperCase()}* 🔥`,
+        `━━━━━━━━━━━━━━━━━━━━`,
+        `👤 *Cliente:* ${nombreLimpio}`,
+        ``,
+        `🛒 *DETALLE DEL PEDIDO (${this.totalArticulos} ${this.totalArticulos === 1 ? "artículo" : "artículos"}):*`,
+        lineasProductos,
+        notasCocina,
+        `━━━━━━━━━━━━━━━━━━━━`,
+        lineasEntrega,
+        ``,
+        detallePago,
+        `━━━━━━━━━━━━━━━━━━━━`,
+        desgloseTotales,
+        ``,
+        `⏱️ _Enviado desde el Menú Digital Interactivo_`
+      ]
+        .filter((linea) => linea !== null)
+        .join("\n");
+
+      const urlWhatsApp = `https://wa.me/${this.config.telefonoWhatsApp}?text=${encodeURIComponent(mensaje)}`;
+      window.open(urlWhatsApp, "_blank", "noopener,noreferrer");
     }
   }));
 });

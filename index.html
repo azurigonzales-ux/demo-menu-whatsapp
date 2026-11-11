@@ -63,6 +63,7 @@
 
 <body
   x-data="menuApp()"
+  @keydown.escape.window="modalPedidoAbierto = false; modalQrAbierto = false"
   class="bg-slate-50 text-slate-800 font-sans antialiased selection:bg-amber-500 selection:text-white min-h-screen pb-32"
 >
   <!-- ==================================================================== -->
@@ -81,7 +82,7 @@
 
     <!-- Contenido del Header -->
     <div class="relative z-10 max-w-2xl mx-auto px-4 pt-6 pb-6">
-      <!-- Barra superior: Insignia pulsante de estado y botón rápido de info/WhatsApp -->
+      <!-- Barra superior: Insignia pulsante de estado + Botón QR/Horario e info de envío -->
       <div class="flex items-center justify-between gap-2 mb-5">
         <!-- Insignia verde pulsante "Abierto ahora • Envío 30 min" -->
         <div class="inline-flex items-center gap-2.5 bg-emerald-500/15 border border-emerald-400/30 backdrop-blur-md px-3.5 py-1.5 rounded-full">
@@ -94,10 +95,24 @@
           </span>
         </div>
 
-        <!-- Costo de envío pill -->
-        <div class="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-xs font-medium text-slate-200">
-          <i class="fa-solid fa-motorcycle text-amber-400"></i>
-          <span>Envío <strong class="text-white" x-text="formatearPrecio(config.costoEnvio)">$35</strong></span>
+        <!-- Acciones rápidas derechas: Costo de envío + Botón discreto de QR e Info del Negocio -->
+        <div class="flex items-center gap-2">
+          <div class="hidden sm:inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-md border border-white/10 px-3 py-1.5 rounded-full text-xs font-medium text-slate-200">
+            <i class="fa-solid fa-motorcycle text-amber-400"></i>
+            <span>Envío <strong class="text-white" x-text="formatearPrecio(config.costoEnvio)">$35</strong></span>
+          </div>
+
+          <!-- Botón discreto de Código QR y Horario (Gancho de venta) -->
+          <button
+            type="button"
+            @click="modalQrAbierto = true"
+            aria-label="Ver Código QR, horarios y ubicación del negocio"
+            class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 active:scale-95 backdrop-blur-md border border-white/15 px-3 py-1.5 rounded-full text-xs font-semibold text-white transition-all duration-200 shadow-sm"
+          >
+            <i class="fa-solid fa-qrcode text-amber-400"></i>
+            <i class="fa-regular fa-clock text-slate-300 text-[11px]"></i>
+            <span>QR e Info</span>
+          </button>
         </div>
       </div>
 
@@ -130,16 +145,24 @@
             x-text="config.eslogan"
           ></p>
 
-          <!-- Metadatos rápidos (Horario y Ubicación) -->
+          <!-- Metadatos rápidos (Horario y Ubicación) clicables para abrir info -->
           <div class="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2.5 text-[11px] text-slate-400">
-            <span class="inline-flex items-center gap-1.5">
+            <button
+              type="button"
+              @click="modalQrAbierto = true"
+              class="inline-flex items-center gap-1.5 hover:text-amber-300 transition-colors"
+            >
               <i class="fa-regular fa-clock text-amber-400"></i>
               <span x-text="config.horarios"></span>
-            </span>
-            <span class="inline-flex items-center gap-1.5 truncate max-w-full">
+            </button>
+            <button
+              type="button"
+              @click="modalQrAbierto = true"
+              class="inline-flex items-center gap-1.5 truncate max-w-full hover:text-amber-300 transition-colors"
+            >
               <i class="fa-solid fa-location-dot text-amber-400"></i>
               <span class="truncate" x-text="config.direccion"></span>
-            </span>
+            </button>
           </div>
         </div>
       </div>
@@ -384,7 +407,7 @@
   <!-- ==================================================================== -->
   <div
     x-cloak
-    x-show="totalArticulos > 0"
+    x-show="totalArticulos > 0 && !modalPedidoAbierto"
     x-transition:enter="transition ease-out duration-300"
     x-transition:enter-start="opacity-0 translate-y-12 scale-95"
     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
@@ -435,6 +458,584 @@
           <span>Ver mi pedido</span>
           <i class="fa-solid fa-arrow-right text-xs"></i>
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL 1: FINALIZAR PEDIDO (CHECKOUT DRAWER / MODAL)                  -->
+  <!-- ==================================================================== -->
+  <div
+    x-cloak
+    x-show="modalPedidoAbierto"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-modal-pedido"
+    class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+  >
+    <!-- Backdrop oscuro con blur -->
+    <div
+      x-show="modalPedidoAbierto"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+      @click="modalPedidoAbierto = false"
+      class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+    ></div>
+
+    <!-- Contenedor del Drawer / Modal -->
+    <div
+      x-show="modalPedidoAbierto"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
+      x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+      x-transition:leave-end="opacity-0 translate-y-full sm:translate-y-8 sm:scale-95"
+      class="relative z-10 w-full max-w-xl bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[92vh] flex flex-col overflow-hidden"
+    >
+      <!-- Indicador superior de arrastre en móvil -->
+      <div class="sm:hidden pt-2.5 pb-1 flex justify-center bg-white">
+        <span class="w-12 h-1.5 rounded-full bg-slate-200"></span>
+      </div>
+
+      <!-- Cabecera fija del Modal -->
+      <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-white shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-600 flex items-center justify-center text-base">
+            <i class="fa-solid fa-receipt"></i>
+          </div>
+          <div>
+            <h2 id="titulo-modal-pedido" class="text-base sm:text-lg font-extrabold text-slate-900 leading-tight">
+              Finalizar Pedido
+            </h2>
+            <p class="text-xs text-slate-500">
+              <span class="font-semibold text-slate-700" x-text="totalArticulos"></span>
+              <span x-text="totalArticulos === 1 ? 'producto seleccionado' : 'productos seleccionados'"></span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Botón Vaciar Carrito -->
+          <button
+            type="button"
+            @click="vaciarCarrito()"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-red-600 bg-red-50 hover:bg-red-100 active:scale-95 transition-all"
+          >
+            <i class="fa-regular fa-trash-can"></i>
+            <span>Vaciar</span>
+          </button>
+
+          <!-- Botón Cerrar Modal -->
+          <button
+            type="button"
+            @click="modalPedidoAbierto = false"
+            aria-label="Cerrar ventana de pedido"
+            class="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors"
+          >
+            <i class="fa-solid fa-xmark text-base"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Cuerpo desplazable del Modal -->
+      <div class="p-5 overflow-y-auto space-y-6 flex-1">
+        <!-- 1. Lista resumida de productos seleccionados -->
+        <section>
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+            <i class="fa-solid fa-bag-shopping text-amber-500"></i>
+            Tu selección
+          </h3>
+          <div class="divide-y divide-slate-100 bg-slate-50/80 border border-slate-200/70 rounded-2xl px-3.5">
+            <template x-for="item in itemsCarrito" :key="item.id">
+              <div class="py-3 flex items-center justify-between gap-3">
+                <div class="flex items-center gap-3 min-w-0">
+                  <img
+                    :src="item.imagen"
+                    :alt="item.nombre"
+                    class="w-12 h-12 rounded-xl object-cover shrink-0 bg-slate-200"
+                  />
+                  <div class="min-w-0">
+                    <h4 class="text-xs sm:text-sm font-bold text-slate-900 truncate" x-text="item.nombre"></h4>
+                    <div class="flex items-center gap-2 text-xs text-slate-500 mt-0.5">
+                      <span x-text="formatearPrecio(item.precio) + ' c/u'"></span>
+                      <span>•</span>
+                      <span class="font-bold text-slate-800" x-text="formatearPrecio(item.subtotal)"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Controles compactos (- / +) dentro del resumen -->
+                <div class="inline-flex items-center bg-white rounded-xl p-0.5 border border-slate-200 shadow-sm shrink-0">
+                  <button
+                    type="button"
+                    @click="decrementar(item.id)"
+                    class="w-7 h-7 rounded-lg text-slate-600 hover:bg-red-50 hover:text-red-600 flex items-center justify-center text-xs font-bold active:scale-90 transition-all"
+                  >
+                    <i class="fa-solid fa-minus"></i>
+                  </button>
+                  <span class="w-6 text-center text-xs font-extrabold text-slate-900" x-text="item.cantidad"></span>
+                  <button
+                    type="button"
+                    @click="incrementar(item.id)"
+                    class="w-7 h-7 rounded-lg bg-amber-500 text-slate-950 hover:bg-amber-400 flex items-center justify-center text-xs font-bold active:scale-90 transition-all"
+                  >
+                    <i class="fa-solid fa-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </section>
+
+        <!-- 2. Selector de tipo de entrega en pestañas (Tabs) -->
+        <section>
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2.5 flex items-center gap-1.5">
+            <i class="fa-solid fa-route text-amber-500"></i>
+            Método de entrega
+          </h3>
+          <div class="grid grid-cols-2 gap-2 p-1.5 bg-slate-100 rounded-2xl border border-slate-200/80">
+            <!-- Tab: Envío a domicilio -->
+            <button
+              type="button"
+              @click="tipoEntrega = 'domicilio'"
+              :class="tipoEntrega === 'domicilio'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900'"
+              class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex flex-col sm:flex-row items-center justify-center gap-1 text-center"
+            >
+              <span>🛵 Envío a domicilio</span>
+              <span
+                class="text-[11px] font-extrabold px-1.5 py-0.5 rounded-md"
+                :class="tipoEntrega === 'domicilio' ? 'bg-amber-500 text-slate-950' : 'bg-slate-200 text-slate-700'"
+                x-text="'+' + formatearPrecio(config.costoEnvio) + ' MXN'"
+              ></span>
+            </button>
+
+            <!-- Tab: Pasar a recoger -->
+            <button
+              type="button"
+              @click="tipoEntrega = 'recoger'; errores.direccion = false"
+              :class="tipoEntrega === 'recoger'
+                ? 'bg-slate-900 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900'"
+              class="py-2.5 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all duration-200 flex flex-col sm:flex-row items-center justify-center gap-1 text-center"
+            >
+              <span>🛍️ Pasar a recoger</span>
+              <span
+                class="text-[11px] font-extrabold px-1.5 py-0.5 rounded-md"
+                :class="tipoEntrega === 'recoger' ? 'bg-emerald-400 text-slate-950' : 'bg-emerald-100 text-emerald-700'"
+              >
+                (Gratis)
+              </span>
+            </button>
+          </div>
+        </section>
+
+        <!-- 3. Formulario Reactivo de Datos del Cliente -->
+        <section class="space-y-3.5">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-user-check text-amber-500"></i>
+            Datos para tu pedido
+          </h3>
+
+          <!-- Nombre del cliente (Obligatorio) -->
+          <div>
+            <label for="input-nombre" class="block text-xs font-bold text-slate-700 mb-1">
+              Tu nombre <span class="text-red-500">*</span>
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs pointer-events-none">
+                <i class="fa-regular fa-user"></i>
+              </span>
+              <input
+                id="input-nombre"
+                type="text"
+                x-model="cliente.nombre"
+                @input="errores.nombre = false; mensajeError = ''"
+                placeholder="Ej. Carlos Mendoza"
+                :class="errores.nombre
+                  ? 'border-red-500 bg-red-50/40 focus:border-red-500 focus:ring-red-500/20'
+                  : 'border-slate-200 bg-slate-50/60 focus:bg-white focus:border-amber-500 focus:ring-amber-500/20'"
+                class="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all"
+              />
+            </div>
+            <p x-show="errores.nombre" x-cloak class="text-[11px] font-semibold text-red-600 mt-1">
+              <i class="fa-solid fa-circle-exclamation mr-1"></i>El nombre es obligatorio para registrar tu pedido.
+            </p>
+          </div>
+
+          <!-- Campos exclusivos de Envío a Domicilio -->
+          <div
+            x-show="tipoEntrega === 'domicilio'"
+            x-transition:enter="transition ease-out duration-200"
+            x-transition:enter-start="opacity-0 -translate-y-2"
+            x-transition:enter-end="opacity-100 translate-y-0"
+            class="space-y-3.5 pt-1"
+          >
+            <!-- Dirección completa (Obligatorio si es envío) -->
+            <div>
+              <label for="input-direccion" class="block text-xs font-bold text-slate-700 mb-1">
+                Dirección completa (Calle, número, colonia) <span class="text-red-500">*</span>
+              </label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs pointer-events-none">
+                  <i class="fa-solid fa-location-dot"></i>
+                </span>
+                <input
+                  id="input-direccion"
+                  type="text"
+                  x-model="cliente.direccion"
+                  @input="errores.direccion = false; mensajeError = ''"
+                  placeholder="Ej. Av. Coyoacán 412, Int 3B, Col. Del Valle"
+                  :class="errores.direccion
+                    ? 'border-red-500 bg-red-50/40 focus:border-red-500 focus:ring-red-500/20'
+                    : 'border-slate-200 bg-slate-50/60 focus:bg-white focus:border-amber-500 focus:ring-amber-500/20'"
+                  class="w-full pl-9 pr-4 py-2.5 rounded-xl border text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all"
+                />
+              </div>
+              <p x-show="errores.direccion" x-cloak class="text-[11px] font-semibold text-red-600 mt-1">
+                <i class="fa-solid fa-circle-exclamation mr-1"></i>Indica tu dirección para poder enviarte el pedido.
+              </p>
+            </div>
+
+            <!-- Referencias de la casa -->
+            <div>
+              <label for="input-referencias" class="block text-xs font-bold text-slate-700 mb-1">
+                Referencias de la casa
+              </label>
+              <div class="relative">
+                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-xs pointer-events-none">
+                  <i class="fa-solid fa-house-flag"></i>
+                </span>
+                <input
+                  id="input-referencias"
+                  type="text"
+                  x-model="cliente.referencias"
+                  placeholder="Ej. Portón negro, frente al parque, tocar timbre 3B"
+                  class="w-full pl-9 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white text-sm text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Aviso informativo cuando elige Pasar a recoger -->
+          <div
+            x-show="tipoEntrega === 'recoger'"
+            x-cloak
+            class="bg-emerald-50/80 border border-emerald-200 rounded-2xl p-3.5 flex items-start gap-3 text-xs text-emerald-900"
+          >
+            <i class="fa-solid fa-store text-emerald-600 text-base mt-0.5"></i>
+            <div>
+              <p class="font-bold">Recoge tu pedido sin costo de envío en:</p>
+              <p class="text-emerald-700 mt-0.5" x-text="config.direccion"></p>
+              <p class="text-[11px] text-emerald-600 font-semibold mt-1">
+                ⏱️ Tiempo estimado de preparación: 15 a 20 minutos.
+              </p>
+            </div>
+          </div>
+
+          <!-- Notas para la cocina (Opcional) -->
+          <div>
+            <label for="input-notas" class="block text-xs font-bold text-slate-700 mb-1">
+              Notas para la cocina <span class="text-slate-400 font-normal">(opcional)</span>
+            </label>
+            <textarea
+              id="input-notas"
+              rows="2"
+              x-model="cliente.notas"
+              placeholder="Ej. sin cebolla, carne bien cocida, aderezo aparte..."
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50/60 focus:bg-white text-sm text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none transition-all resize-none"
+            ></textarea>
+          </div>
+        </section>
+
+        <!-- 4. Selector de Método de Pago -->
+        <section class="space-y-3">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-wallet text-amber-500"></i>
+            Método de pago
+          </h3>
+
+          <div class="grid grid-cols-2 gap-2.5">
+            <!-- Opción Efectivo -->
+            <button
+              type="button"
+              @click="cliente.metodoPago = 'efectivo'"
+              :class="cliente.metodoPago === 'efectivo'
+                ? 'border-amber-500 bg-amber-50/60 text-slate-900 ring-2 ring-amber-500/20'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+              class="p-3 rounded-2xl border text-left transition-all flex items-center gap-2.5"
+            >
+              <div
+                :class="cliente.metodoPago === 'efectivo' ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 text-slate-500'"
+                class="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 transition-colors"
+              >
+                <i class="fa-solid fa-money-bill-wave"></i>
+              </div>
+              <div>
+                <div class="text-xs sm:text-sm font-extrabold">Efectivo</div>
+                <div class="text-[11px] text-slate-500">Pago al recibir</div>
+              </div>
+            </button>
+
+            <!-- Opción Transferencia SPEI -->
+            <button
+              type="button"
+              @click="cliente.metodoPago = 'transferencia'"
+              :class="cliente.metodoPago === 'transferencia'
+                ? 'border-amber-500 bg-amber-50/60 text-slate-900 ring-2 ring-amber-500/20'
+                : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'"
+              class="p-3 rounded-2xl border text-left transition-all flex items-center gap-2.5"
+            >
+              <div
+                :class="cliente.metodoPago === 'transferencia' ? 'bg-amber-500 text-slate-950' : 'bg-slate-100 text-slate-500'"
+                class="w-9 h-9 rounded-xl flex items-center justify-center text-sm shrink-0 transition-colors"
+              >
+                <i class="fa-solid fa-building-columns"></i>
+              </div>
+              <div>
+                <div class="text-xs sm:text-sm font-extrabold">Transferencia SPEI</div>
+                <div class="text-[11px] text-slate-500">CLABE directa</div>
+              </div>
+            </button>
+          </div>
+
+          <!-- Sub-panel Efectivo: ¿Con cuánto pagas para llevar cambio? -->
+          <div
+            x-show="cliente.metodoPago === 'efectivo'"
+            x-transition.opacity
+            class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5"
+          >
+            <label for="input-cambio" class="block text-xs font-bold text-slate-700 mb-1.5">
+              💵 ¿Con cuánto pagas para llevar cambio?
+            </label>
+            <div class="relative">
+              <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 font-bold text-sm pointer-events-none">$</span>
+              <input
+                id="input-cambio"
+                type="number"
+                min="0"
+                step="10"
+                x-model="cliente.pagaCon"
+                placeholder="Ej. 500 (o déjalo vacío si pagas exacto)"
+                class="w-full pl-8 pr-14 py-2 rounded-xl border border-slate-200 bg-white text-sm text-slate-900 placeholder-slate-400 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 focus:outline-none"
+              />
+              <span class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-xs font-bold text-slate-400 pointer-events-none">MXN</span>
+            </div>
+          </div>
+
+          <!-- Sub-panel Transferencia SPEI: Recuadro con CLABE copiable en un clic -->
+          <div
+            x-show="cliente.metodoPago === 'transferencia'"
+            x-cloak
+            x-transition.opacity
+            class="bg-slate-900 text-white rounded-2xl p-4 border border-slate-800 space-y-2.5"
+          >
+            <div class="flex items-center justify-between text-xs text-slate-300">
+              <span><i class="fa-solid fa-shield-halved text-amber-400 mr-1"></i>Banco: <strong class="text-white" x-text="config.datosBancarios.banco"></strong></span>
+              <span class="text-[11px] bg-white/10 px-2 py-0.5 rounded-md" x-text="config.datosBancarios.titular"></span>
+            </div>
+
+            <div class="bg-slate-800/90 border border-slate-700 rounded-xl p-2.5 flex items-center justify-between gap-2">
+              <div class="min-w-0">
+                <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">CLABE Interbancaria (18 dígitos)</span>
+                <span class="font-mono text-sm sm:text-base font-extrabold tracking-wider text-amber-400 select-all" x-text="config.datosBancarios.clabe"></span>
+              </div>
+
+              <button
+                type="button"
+                @click="copiarClabe()"
+                :class="clabeCopiada
+                  ? 'bg-emerald-500 text-slate-950'
+                  : 'bg-amber-500 hover:bg-amber-400 text-slate-950'"
+                class="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-extrabold transition-all active:scale-95"
+              >
+                <i class="fa-solid" :class="clabeCopiada ? 'fa-check' : 'fa-copy'"></i>
+                <span x-text="clabeCopiada ? '¡Copiada!' : 'Copiar CLABE'"></span>
+              </button>
+            </div>
+            <p class="text-[11px] text-slate-400">
+              Envía tu comprobante de transferencia en el chat de WhatsApp al confirmar tu pedido.
+            </p>
+          </div>
+        </section>
+
+        <!-- 5. Desglose Final de Costos -->
+        <section class="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-2">
+          <div class="flex items-center justify-between text-xs sm:text-sm text-slate-600">
+            <span>Subtotal (<span x-text="totalArticulos"></span> art.)</span>
+            <span class="font-bold text-slate-800" x-text="formatearPrecio(subtotalCarrito) + ' MXN'"></span>
+          </div>
+
+          <div class="flex items-center justify-between text-xs sm:text-sm text-slate-600">
+            <span x-text="tipoEntrega === 'domicilio' ? 'Costo de envío a domicilio' : 'Costo de envío (Pasar a recoger)'"></span>
+            <span
+              class="font-bold"
+              :class="costoEnvioActual === 0 ? 'text-emerald-600' : 'text-slate-800'"
+              x-text="costoEnvioActual === 0 ? 'Gratis ($0 MXN)' : '+' + formatearPrecio(costoEnvioActual) + ' MXN'"
+            ></span>
+          </div>
+
+          <div class="pt-2.5 border-t border-slate-200 flex items-baseline justify-between">
+            <span class="text-sm sm:text-base font-extrabold text-slate-900">Total a pagar</span>
+            <div class="text-right">
+              <span class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight" x-text="formatearPrecio(totalPagar)"></span>
+              <span class="text-xs font-bold text-slate-500 ml-0.5">MXN</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Alerta de validación en caso de campos faltantes -->
+        <div
+          x-cloak
+          x-show="mensajeError"
+          x-transition
+          class="bg-red-50 border border-red-200 text-red-700 rounded-2xl p-3.5 text-xs font-bold flex items-center gap-2.5"
+        >
+          <i class="fa-solid fa-triangle-exclamation text-red-500 text-base shrink-0"></i>
+          <span x-text="mensajeError"></span>
+        </div>
+      </div>
+
+      <!-- Pie fijo del Modal con Botón Verde Brillante de WhatsApp -->
+      <div class="p-4 bg-white border-t border-slate-100 shrink-0">
+        <button
+          type="button"
+          @click="enviarPedidoWhatsApp()"
+          class="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#25D366] via-emerald-500 to-green-600 hover:from-[#20bd5a] hover:to-green-500 text-white font-extrabold text-sm sm:text-base shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-3 active:scale-[0.99] transition-all"
+        >
+          <i class="fa-brands fa-whatsapp text-xl"></i>
+          <span>Enviar Pedido por WhatsApp</span>
+          <span class="bg-black/15 px-2.5 py-0.5 rounded-lg text-xs font-extrabold" x-text="formatearPrecio(totalPagar)"></span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================================================================== -->
+  <!-- MODAL 2: CÓDIGO QR E INFO DEL NEGOCIO (EL GANCHO DE VENTA)           -->
+  <!-- ==================================================================== -->
+  <div
+    x-cloak
+    x-show="modalQrAbierto"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="titulo-modal-qr"
+    class="fixed inset-0 z-50 flex items-center justify-center p-4"
+  >
+    <!-- Backdrop oscuro con blur -->
+    <div
+      x-show="modalQrAbierto"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0"
+      x-transition:enter-end="opacity-100"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0"
+      @click="modalQrAbierto = false"
+      class="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+    ></div>
+
+    <!-- Tarjeta del Modal QR e Información -->
+    <div
+      x-show="modalQrAbierto"
+      x-transition:enter="transition ease-out duration-300"
+      x-transition:enter-start="opacity-0 scale-90 translate-y-4"
+      x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+      x-transition:leave="transition ease-in duration-200"
+      x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+      x-transition:leave-end="opacity-0 scale-95 translate-y-4"
+      class="relative z-10 w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+    >
+      <!-- Cabecera oscura decorativa -->
+      <div class="relative bg-slate-900 text-white p-5 text-center">
+        <button
+          type="button"
+          @click="modalQrAbierto = false"
+          aria-label="Cerrar ventana de información"
+          class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+        >
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        <img
+          :src="config.logoUrl"
+          :alt="config.nombre"
+          class="w-16 h-16 rounded-full object-cover mx-auto border-2 border-amber-400 shadow-md mb-2"
+        />
+        <h2 id="titulo-modal-qr" class="text-base sm:text-lg font-extrabold" x-text="config.nombre"></h2>
+        <p class="text-xs text-amber-400 font-semibold mt-0.5">Menú Digital & Código QR para Mesas</p>
+      </div>
+
+      <!-- Contenido desplazable -->
+      <div class="p-5 overflow-y-auto space-y-5">
+        <!-- Generador dinámico de Código QR -->
+        <div class="bg-slate-50 border border-slate-200/80 rounded-2xl p-4 text-center">
+          <div class="inline-block bg-white p-3 rounded-2xl shadow-sm border border-slate-100 mb-3">
+            <img
+              :src="urlCodigoQr"
+              alt="Código QR del Menú Digital"
+              width="200"
+              height="200"
+              class="w-44 h-44 mx-auto object-contain"
+            />
+          </div>
+          <p class="text-xs text-slate-600 font-medium mb-3">
+            Escanea este código con la cámara de tu celular para abrir el menú interactivo al instante.
+          </p>
+
+          <!-- Botón Descargar QR para imprimir en mesas -->
+          <button
+            type="button"
+            @click="descargarQr()"
+            :disabled="descargandoQr"
+            class="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-extrabold text-xs sm:text-sm shadow-md shadow-orange-500/20 inline-flex items-center justify-center gap-2 active:scale-95 transition-all"
+          >
+            <i class="fa-solid" :class="descargandoQr ? 'fa-spinner fa-spin' : 'fa-download'"></i>
+            <span x-text="descargandoQr ? 'Generando archivo...' : 'Descargar QR para imprimir en mesas'"></span>
+          </button>
+        </div>
+
+        <!-- Horarios del Negocio -->
+        <div class="space-y-2">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i class="fa-regular fa-clock text-amber-500"></i>
+            Horarios de atención
+          </h3>
+          <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/70 space-y-2 text-xs">
+            <template x-for="item in config.horariosDetalle" :key="item.dias">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-slate-700" x-text="item.dias"></span>
+                <span class="font-bold text-slate-900" x-text="item.horas"></span>
+              </div>
+            </template>
+          </div>
+        </div>
+
+        <!-- Ubicación y Botón de Google Maps -->
+        <div class="space-y-2">
+          <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i class="fa-solid fa-map-location-dot text-amber-500"></i>
+            Ubicación de la sucursal
+          </h3>
+          <div class="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/70">
+            <p class="text-xs text-slate-700 font-medium mb-3" x-text="config.direccion"></p>
+            <a
+              :href="config.googleMapsUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs inline-flex items-center justify-center gap-2 transition-colors"
+            >
+              <i class="fa-solid fa-location-arrow text-amber-400"></i>
+              <span>Abrir ubicación en Google Maps</span>
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   </div>
